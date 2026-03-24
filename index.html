@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spelling Bee Practice</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Fredoka+One&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    font-family: 'Baloo 2', sans-serif;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+    overflow-x: hidden;
+  }
+
+  /* Floating hexagons */
+  .hex-bg { position: fixed; inset: 0; overflow: hidden; pointer-events: none; opacity: 0.05; z-index: 0; }
+  .hex {
+    position: absolute;
+    background: #ffd700;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    animation: floatHex 6s ease-in-out infinite;
+  }
+
+  @keyframes floatHex {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(10deg); }
+  }
+  @keyframes beeWiggle {
+    0%, 100% { transform: rotate(-3deg); }
+    50% { transform: rotate(3deg); }
+  }
+  @keyframes pulseGlow {
+    0% { box-shadow: 0 0 20px rgba(255,215,0,0.3); }
+    50% { box-shadow: 0 0 60px rgba(255,215,0,0.6); }
+    100% { box-shadow: 0 0 20px rgba(255,215,0,0.3); }
+  }
+  @keyframes micPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,75,75,0.4); }
+    50% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(255,75,75,0); }
+  }
+  @keyframes correctBounce {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.2); }
+    60% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+
+  .content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 500px; }
+
+  h1 {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(28px, 7vw, 46px);
+    background: linear-gradient(135deg, #ffd700 0%, #ffaa00 50%, #ff8c00 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .subtitle { font-size: 13px; opacity: 0.45; font-weight: 600; margin-bottom: 16px; }
+
+  /* Score cards */
+  .score-row { display: flex; gap: 12px; margin-bottom: 20px; animation: fadeInUp 0.4s ease-out; }
+  .score-card {
+    background: rgba(255,255,255,0.07);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 10px 18px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .score-num { font-size: 26px; font-weight: 800; }
+  .score-label { font-size: 10px; opacity: 0.5; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
+  .green { color: #4ade80; }
+  .yellow { color: #fbbf24; }
+  .blue { color: #60a5fa; }
+
+  /* Bee button */
+  .bee-btn {
+    width: 150px; height: 150px;
+    border-radius: 50%;
+    border: 4px solid rgba(255,215,0,0.4);
+    background: radial-gradient(circle at 40% 35%, #ffd700 0%, #e6a800 60%, #cc8800 100%);
+    cursor: pointer;
+    font-size: 68px;
+    display: flex; align-items: center; justify-content: center;
+    animation: beeWiggle 2s ease-in-out infinite, pulseGlow 3s ease-in-out infinite;
+    transition: all 0.2s ease;
+    margin-bottom: 20px;
+  }
+  .bee-btn:hover { transform: scale(1.05); filter: brightness(1.1); }
+  .bee-btn:active { transform: scale(0.97); }
+  .bee-btn.bounce { animation: correctBounce 0.6s ease-out, pulseGlow 3s ease-in-out infinite; }
+
+  /* Message area */
+  .msg-area { text-align: center; margin-bottom: 16px; min-height: 50px; }
+  .msg {
+    font-size: clamp(16px, 4.5vw, 22px);
+    font-weight: 700;
+    transition: color 0.3s ease;
+    line-height: 1.4;
+  }
+  .msg.ok { color: #4ade80; }
+  .msg.wrong { color: #fb923c; }
+
+  .big-word {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(32px, 9vw, 56px);
+    letter-spacing: 6px;
+    color: #fbbf24;
+    margin-top: 8px;
+    animation: fadeInUp 0.4s ease-out;
+  }
+
+  .hearing {
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.5);
+    font-style: italic;
+    margin-top: 10px;
+    animation: fadeInUp 0.3s ease-out;
+  }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; animation: fadeInUp 0.5s ease-out; }
+
+  .btn {
+    padding: 13px 24px;
+    border-radius: 50px;
+    border: none;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Baloo 2', sans-serif;
+    display: flex; align-items: center; gap: 7px;
+    transition: all 0.2s ease;
+  }
+  .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+  .btn:active { transform: translateY(0); filter: brightness(0.95); }
+
+  .btn-spell { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); }
+  .btn-listening {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    animation: micPulse 1.5s ease-in-out infinite;
+    cursor: default;
+  }
+  .btn-repeat {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255,255,255,0.15);
+  }
+  .btn-next { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #1a1a2e; font-weight: 800; }
+  .btn-done { background: linear-gradient(135deg, #10b981 0%, #059669 100%); margin-bottom: 12px; }
+
+  .footer {
+    margin-top: auto;
+    padding-top: 30px;
+    text-align: center;
+    opacity: 0.35;
+    font-size: 12px;
+    max-width: 380px;
+    line-height: 1.6;
+  }
+
+  /* Type-to-spell fallback */
+  .type-row { display: flex; gap: 8px; margin-bottom: 12px; animation: fadeInUp 0.4s ease-out; width: 100%; max-width: 340px; }
+  .type-input {
+    flex: 1;
+    padding: 12px 18px;
+    border-radius: 50px;
+    border: 2px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.07);
+    color: #fff;
+    font-size: 18px;
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-align: center;
+    outline: none;
+    backdrop-filter: blur(10px);
+  }
+  .type-input::placeholder { color: rgba(255,255,255,0.25); letter-spacing: 1px; font-size: 14px; }
+  .type-input:focus { border-color: rgba(139,92,246,0.6); }
+  .btn-submit { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 12px 20px; }
+
+  .mode-toggle {
+    font-size: 12px;
+    opacity: 0.5;
+    cursor: pointer;
+    margin-bottom: 12px;
+    text-decoration: underline;
+    background: none;
+    border: none;
+    color: #fff;
+    font-family: 'Baloo 2', sans-serif;
+  }
+  .mode-toggle:hover { opacity: 0.8; }
+</style>
+</head>
+<body>
+
+<div class="hex-bg" id="hexBg"></div>
+
+<div class="content">
+  <h1>🐝 Spelling Bee</h1>
+  <p class="subtitle" id="subtitle">Loading words...</p>
+
+  <div class="score-row" id="scoreRow" style="display:none">
+    <div class="score-card">
+      <div class="score-num green" id="correctCount">0</div>
+      <div class="score-label">Correct</div>
+    </div>
+    <div class="score-card">
+      <div class="score-num yellow" id="totalCount">0</div>
+      <div class="score-label">Attempted</div>
+    </div>
+    <div class="score-card">
+      <div class="score-num blue" id="pctCount">0%</div>
+      <div class="score-label">Accuracy</div>
+    </div>
+  </div>
+
+  <button class="bee-btn" id="beeBtn" onclick="handleNewWord()">🐝</button>
+
+  <div class="msg-area">
+    <p class="msg" id="msg">Tap the bee to get a word!</p>
+    <p class="big-word" id="bigWord" style="display:none"></p>
+    <p class="hearing" id="hearing" style="display:none"></p>
+  </div>
+
+  <!-- Voice mode buttons -->
+  <div id="voiceControls" style="display:none">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+      <button class="btn btn-done" id="doneBtn" style="display:none" onclick="handleDone()">✅ Done Spelling</button>
+      <div class="btn-row" id="btnRow"></div>
+    </div>
+  </div>
+
+  <!-- Type mode input -->
+  <div id="typeControls" style="display:none">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div class="type-row">
+        <input type="text" class="type-input" id="typeInput" placeholder="Type spelling..." autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="btn btn-submit" onclick="handleTypeSubmit()">→</button>
+      </div>
+      <div class="btn-row" id="typeBtnRow"></div>
+    </div>
+  </div>
+
+  <button class="mode-toggle" id="modeToggle" style="display:none" onclick="toggleMode()">Switch to typing mode</button>
+
+  <div id="voicePicker" style="display:none;margin-bottom:12px;text-align:center;"></div>
+
+  <div class="footer">
+    Tap the 🐝 for a word · Spell it out loud or type it · Works best in Chrome
+  </div>
+</div>
+
+<script>
+const WORDS = [
+  "flat","cash","band","bell","left","shelf","wealth","grim","mill","hint",
+  "plot","dock","blot","odd","sum","major","clay","stray","today","bail",
+  "rail","drain","faint","claim","pale","face","graze","cane","slate","ache",
+  "evening","zebra","breathe","league","squeaky","healer","sleek","indeed","reef","deed",
+  "speech","wheeze","concrete","scheme","belief","bolt","mold","tall","shadow","flow",
+  "maws","lower","blown","quote","mole","stare","stove","chose","sole","stole",
+  "unblock","unborn","unchain","unload","unlock","recall","relearn","resell","rewash","rewind",
+  "imperfect","indirect","incorrect","illegal","overact","thirty","width","northern","fifth","choose",
+  "touch","chef","chance","pitcher","kitchen","sketched","ketchup","snatch","stretching","rush",
+  "shield","shriek","shrimp","shrink","script","screw","screech","straighten","straps","strand",
+  "sprawl","sprang","splashing","splotch","climb","minding","ries","die","height",
+  "sigh","fright","slight","dine","file","kite","prime","pride","slice","twice",
+  "dart","guard","award","backyard","argue","spark","target","smart","charge","carpet",
+  "warp","door","fort","morning","stork","sickly","hardly","quickly","slowly","carefully",
+  "wonderful","beautiful","graceful","spoonful","darkness","fossil","member","nodded","planner","plastic",
+  "rumbles","slender","summer","swallow","tablet","illness","goodness","spotless","herb","person",
+  "sternly","serpent","worse","pearl","dirty","birth","shirt","twirl","swirl","purse",
+  "curl","curve","curb","wrinkle","wriggle","wrapper","wrench","answer","knead","knives",
+  "known","kneel","knew","plumber","combs","thumbs","lambs","condemn","scenery","once",
+  "scene","spice","circus","cement","police","certain","ounce","glance","germs","bridge",
+  "badge","strange","orange","clams","mints","props","arches","dresses","parents","caves",
+  "glasses","hobbies","engines","couches","arrows","enemies","babies","ranches","fishbowl","lookout",
+  "yardstick","desktop","campfire","overhead","waterproof","grandparent","railroad","snowstorm","loudspeaker","bookcase",
+  "bedroom","blindfold","newborn","tasted","ripping","forced","flipping","tapped","flipped","scared",
+  "flagged","ripped","skipped","tapping","saved","skipping","scared","flagging","funnier","families",
+  "pennies","worried","replied","varied","marries","carries","easily","silliest","jumpier","emptier",
+  "merrier","applied","cozily","mood","stoop","zoom","crew","stew","ruler","produce",
+  "issue","tutor","truth","bruised","juicy","suits","group","huge","noises","voices",
+  "rejoice","annoy","destroy","voyage","mound","south","pound","pouch","thousand","wound",
+  "grouch","cowboy","caught","lawns","drawn","strawberry","straw","awe","shawl","alter",
+  "halt","talking","walker","chalk","stalk","small","caller","blanket","blossom"
+];
+
+let currentWord = null;
+let score = { correct: 0, total: 0 };
+let usedWords = [];
+let isListening = false;
+let recognition = null;
+let silenceTimer = null;
+let heardText = '';
+let mode = 'voice'; // 'voice' or 'type'
+let hasMic = true;
+let alreadyProcessed = false;
+
+const synth = window.speechSynthesis;
+
+// Init
+document.getElementById('subtitle').textContent = `${WORDS.length} words loaded`;
+
+// Generate hex background
+const hexBg = document.getElementById('hexBg');
+for (let i = 0; i < 12; i++) {
+  const hex = document.createElement('div');
+  hex.className = 'hex';
+  hex.style.width = `${40 + i * 20}px`;
+  hex.style.height = `${40 + i * 20}px`;
+  hex.style.left = `${(i * 23) % 90}%`;
+  hex.style.top = `${(i * 17) % 85}%`;
+  hex.style.animationDuration = `${6 + i * 0.5}s`;
+  hex.style.animationDelay = `${i * 0.3}s`;
+  hexBg.appendChild(hex);
+}
+
+// Check for speech recognition support
+if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+  hasMic = false;
+  mode = 'type';
+}
+
+// Type input enter key
+document.getElementById('typeInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') handleTypeSubmit();
+});
+
+// Voice selection - pick the best natural-sounding English voice
+let bestVoice = null;
+let allEnglishVoices = [];
+
+function pickBestVoice() {
+  const voices = synth.getVoices();
+  if (!voices.length) return;
+
+  // Get all English voices for the dropdown
+  allEnglishVoices = voices.filter(v => v.lang.startsWith('en'));
+  buildVoiceDropdown();
+
+  // Priority 1: Enhanced/Premium voices (these are the high-quality downloaded ones)
+  const enhanced = allEnglishVoices.filter(v =>
+    /enhanced|premium|natural|neural|compact/i.test(v.name)
+  );
+  if (enhanced.length) {
+    bestVoice = enhanced[0];
+    updateVoiceDropdown();
+    return;
+  }
+
+  // Priority 2: Known good voices by name
+  const preferred = [
+    'samantha', 'karen', 'daniel', 'moira', 'tessa', 'rishi', 'fiona', 'veena',
+    'google us english', 'google uk english female',
+    'microsoft zira', 'microsoft david', 'microsoft jenny', 'microsoft aria',
+  ];
+  for (const pref of preferred) {
+    const match = allEnglishVoices.find(v => v.name.toLowerCase().includes(pref));
+    if (match) { bestVoice = match; updateVoiceDropdown(); return; }
+  }
+
+  // Priority 3: Any non-default English voice (default is usually the worst)
+  if (allEnglishVoices.length > 1) {
+    bestVoice = allEnglishVoices.find(v => !v.default) || allEnglishVoices[0];
+  } else if (allEnglishVoices.length === 1) {
+    bestVoice = allEnglishVoices[0];
+  }
+  updateVoiceDropdown();
+}
+
+function buildVoiceDropdown() {
+  const container = document.getElementById('voicePicker');
+  if (!allEnglishVoices.length) return;
+  let html = '<label style="font-size:12px;opacity:0.5;margin-right:6px;">Voice:</label>';
+  html += '<select id="voiceSelect" onchange="onVoiceChange()" style="background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 8px;font-size:12px;font-family:Baloo 2,sans-serif;">';
+  allEnglishVoices.forEach((v, i) => {
+    const label = v.name.replace('Microsoft ', '').replace('Google ', 'G: ');
+    const tag = /enhanced|premium|natural|neural/i.test(v.name) ? ' ★' : '';
+    html += `<option value="${i}">${label}${tag}</option>`;
+  });
+  html += '</select>';
+  container.innerHTML = html;
+  container.style.display = '';
+}
+
+function updateVoiceDropdown() {
+  const sel = document.getElementById('voiceSelect');
+  if (!sel || !bestVoice) return;
+  const idx = allEnglishVoices.indexOf(bestVoice);
+  if (idx >= 0) sel.value = idx;
+}
+
+function onVoiceChange() {
+  const sel = document.getElementById('voiceSelect');
+  bestVoice = allEnglishVoices[parseInt(sel.value)];
+  // Preview the voice
+  speak('Hello! This is how I sound.', 0.9);
+}
+
+// Voices load async on some browsers
+synth.onvoiceschanged = pickBestVoice;
+pickBestVoice();
+// Also retry after a short delay (some browsers need this)
+setTimeout(pickBestVoice, 100);
+setTimeout(pickBestVoice, 500);
+
+function speak(text, rate = 0.9) {
+  return new Promise((resolve) => {
+    synth.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = rate;
+    utterance.pitch = 1;
+    if (bestVoice) utterance.voice = bestVoice;
+    utterance.onend = resolve;
+    utterance.onerror = resolve;
+    synth.speak(utterance);
+  });
+}
+
+function getRandomWord() {
+  let available = WORDS.filter(w => !usedWords.includes(w));
+  if (available.length === 0) {
+    usedWords = [];
+    available = [...WORDS];
+  }
+  const word = available[Math.floor(Math.random() * available.length)];
+  usedWords.push(word);
+  return word;
+}
+
+function updateScore() {
+  const row = document.getElementById('scoreRow');
+  row.style.display = 'flex';
+  document.getElementById('correctCount').textContent = score.correct;
+  document.getElementById('totalCount').textContent = score.total;
+  document.getElementById('pctCount').textContent = score.total > 0 ? Math.round((score.correct / score.total) * 100) + '%' : '0%';
+}
+
+function setMsg(text, type) {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg' + (type === 'ok' ? ' ok' : type === 'wrong' ? ' wrong' : '');
+}
+
+function showButtons(status) {
+  const isVoice = mode === 'voice';
+  const container = isVoice ? document.getElementById('btnRow') : document.getElementById('typeBtnRow');
+  container.innerHTML = '';
+
+  if (status === 'ready') {
+    if (isVoice) {
+      container.innerHTML = `
+        <button class="btn btn-spell" onclick="handleSpell()">🎤 Spell It</button>
+        <button class="btn btn-repeat" onclick="handleRepeat()">🔊 Repeat</button>
+      `;
+    } else {
+      container.innerHTML = `
+        <button class="btn btn-repeat" onclick="handleRepeat()">🔊 Repeat</button>
+      `;
+      document.getElementById('typeInput').value = '';
+      document.getElementById('typeInput').focus();
+    }
+  } else if (status === 'answered') {
+    container.innerHTML = `
+      <button class="btn btn-next" onclick="handleNewWord()">➡️ Next Word</button>
+      <button class="btn btn-repeat" onclick="handleRepeat()">🔊 Repeat</button>
+    `;
+  }
+}
+
+function toggleMode() {
+  mode = mode === 'voice' ? 'type' : 'voice';
+  const toggle = document.getElementById('modeToggle');
+  toggle.textContent = mode === 'voice' ? 'Switch to typing mode' : 'Switch to voice mode';
+
+  if (!hasMic) {
+    mode = 'type';
+    toggle.style.display = 'none';
+  }
+
+  // Show correct controls
+  document.getElementById('voiceControls').style.display = mode === 'voice' && currentWord ? '' : 'none';
+  document.getElementById('typeControls').style.display = mode === 'type' && currentWord ? '' : 'none';
+
+  if (currentWord) showButtons('ready');
+}
+
+async function handleNewWord() {
+  // Stop any ongoing listening
+  stopListening();
+
+  currentWord = getRandomWord();
+  heardText = '';
+  alreadyProcessed = false;
+
+  document.getElementById('bigWord').style.display = 'none';
+  document.getElementById('hearing').style.display = 'none';
+  document.getElementById('doneBtn').style.display = 'none';
+  document.getElementById('modeToggle').style.display = hasMic ? '' : 'none';
+
+  // Show correct controls
+  document.getElementById('voiceControls').style.display = mode === 'voice' ? '' : 'none';
+  document.getElementById('typeControls').style.display = mode === 'type' ? '' : 'none';
+
+  setMsg('Your word is...', '');
+  showButtons('');
+
+  await speak(`Your word is: ${currentWord}`, 0.85);
+  await new Promise(r => setTimeout(r, 500));
+  await speak(currentWord, 0.7);
+
+  setMsg('Ready! Spell the word.', '');
+  showButtons('ready');
+
+  document.getElementById('subtitle').textContent = `${WORDS.length} words · ${usedWords.length} practiced`;
+}
+
+async function handleRepeat() {
+  if (!currentWord) return;
+  await speak(currentWord, 0.7);
+  await new Promise(r => setTimeout(r, 400));
+  await speak(currentWord, 0.7);
+}
+
+function handleSpell() {
+  if (!currentWord || isListening) return;
+
+  heardText = '';
+  document.getElementById('hearing').style.display = 'none';
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+  recognition.maxAlternatives = 1;
+
+  let finalTranscript = '';
+
+  recognition.onresult = (event) => {
+    let interim = '';
+    finalTranscript = '';
+    for (let i = 0; i < event.results.length; i++) {
+      const t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += t + ' ';
+      } else {
+        interim += t;
+      }
+    }
+    heardText = (finalTranscript + interim).trim();
+    if (heardText) {
+      const el = document.getElementById('hearing');
+      el.style.display = '';
+      el.textContent = `Hearing: "${heardText}"`;
+    }
+
+    // Reset silence timer
+    if (silenceTimer) clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(() => {
+      if (heardText) processSpelling(heardText.toLowerCase().trim());
+    }, 2500);
+  };
+
+  recognition.onerror = (event) => {
+    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+      stopListening();
+      setMsg("Mic blocked! Switching to typing mode.", 'wrong');
+      hasMic = false;
+      mode = 'type';
+      document.getElementById('modeToggle').style.display = 'none';
+      document.getElementById('voiceControls').style.display = 'none';
+      document.getElementById('typeControls').style.display = '';
+      showButtons('ready');
+      return;
+    }
+    if (event.error === 'no-speech') {
+      stopListening();
+      setMsg("Didn't hear anything. Try again!", '');
+      showButtons('ready');
+    } else if (event.error !== 'aborted') {
+      stopListening();
+      setMsg("Couldn't hear you. Try again!", '');
+      showButtons('ready');
+    }
+  };
+
+  recognition.onend = () => {
+    if (isListening && heardText) {
+      if (silenceTimer) clearTimeout(silenceTimer);
+      processSpelling(heardText.toLowerCase().trim());
+    } else if (isListening) {
+      stopListening();
+      setMsg("Didn't hear anything. Try again!", '');
+      showButtons('ready');
+    }
+  };
+
+  try {
+    recognition.start();
+    isListening = true;
+
+    // Update UI
+    const container = document.getElementById('btnRow');
+    container.innerHTML = `
+      <button class="btn btn-listening" disabled>🔴 Listening...</button>
+      <button class="btn btn-repeat" onclick="handleRepeat()">🔊 Repeat</button>
+    `;
+    document.getElementById('doneBtn').style.display = '';
+    setMsg('Listening... spell the word now!', '');
+  } catch (e) {
+    hasMic = false;
+    mode = 'type';
+    toggleMode();
+  }
+}
+
+function stopListening() {
+  isListening = false;
+  if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+  if (recognition) { try { recognition.stop(); } catch(e) {} recognition = null; }
+  document.getElementById('doneBtn').style.display = 'none';
+  document.getElementById('hearing').style.display = 'none';
+}
+
+function handleDone() {
+  if (silenceTimer) clearTimeout(silenceTimer);
+  if (heardText) {
+    processSpelling(heardText.toLowerCase().trim());
+  }
+}
+
+function handleTypeSubmit() {
+  const input = document.getElementById('typeInput');
+  const val = input.value.trim().toLowerCase();
+  if (!val || !currentWord) return;
+  checkAnswer(val);
+}
+
+function parseLetters(transcript) {
+  const spokenClean = transcript
+    .replace(/[^a-z\s]/g, '')
+    .split(/[\s,]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+
+  let spelledWord = '';
+  const allSingleLetters = spokenClean.every(s => s.length === 1);
+
+  if (allSingleLetters && spokenClean.length > 0) {
+    return spokenClean.join('');
+  }
+
+  const letterMap = {
+    'ay': 'a', 'bee': 'b', 'be': 'b', 'see': 'c', 'sea': 'c', 'dee': 'd', 'ee': 'e',
+    'ef': 'f', 'eff': 'f', 'gee': 'g', 'aitch': 'h', 'age': 'h', 'ach': 'h',
+    'eye': 'i', 'jay': 'j', 'kay': 'k', 'el': 'l', 'elle': 'l',
+    'em': 'm', 'en': 'n', 'oh': 'o', 'pee': 'p', 'pea': 'p',
+    'cue': 'q', 'queue': 'q', 'ar': 'r', 'are': 'r',
+    'es': 's', 'ess': 's', 'ass': 's', 'tee': 't', 'tea': 't', 'you': 'u',
+    'vee': 'v', 'we': 'w', 'dubya': 'w', 'double': 'w',
+    'ex': 'x', 'why': 'y', 'wy': 'y', 'wye': 'y',
+    'zee': 'z', 'zed': 'z', 'zee': 'z',
+  };
+
+  for (const part of spokenClean) {
+    if (part.length === 1) {
+      spelledWord += part;
+    } else if (letterMap[part] !== undefined) {
+      spelledWord += letterMap[part];
+    } else {
+      // Might be the whole word said aloud
+      spelledWord = part;
+      break;
+    }
+  }
+  return spelledWord;
+}
+
+function processSpelling(transcript) {
+  if (alreadyProcessed) return;
+  alreadyProcessed = true;
+  stopListening();
+  const spelledWord = parseLetters(transcript);
+  checkAnswer(spelledWord);
+}
+
+async function checkAnswer(spelledWord) {
+  stopListening();
+
+  const isCorrect = spelledWord === currentWord.toLowerCase();
+  score.total++;
+  if (isCorrect) score.correct++;
+  updateScore();
+
+  if (isCorrect) {
+    setMsg("That's correct! Great job! 🎉", 'ok');
+    const bee = document.getElementById('beeBtn');
+    bee.classList.add('bounce');
+    setTimeout(() => bee.classList.remove('bounce'), 700);
+    showButtons('answered');
+    await speak("That's correct! Great job!");
+  } else {
+    setMsg("Not quite. The correct spelling is:", 'wrong');
+    const bw = document.getElementById('bigWord');
+    bw.textContent = currentWord.toUpperCase();
+    bw.style.display = '';
+    showButtons('answered');
+    const letterByLetter = currentWord.split('').join(', ');
+    await speak(`Not quite. The correct spelling is: ${letterByLetter}. ${currentWord}.`);
+  }
+
+  // Clear type input
+  document.getElementById('typeInput').value = '';
+}
+</script>
+
+</body>
+</html>
